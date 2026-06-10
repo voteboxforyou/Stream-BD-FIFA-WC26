@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stream BD – FIFA World Cup 2026</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#f5f6f8;--white:#fff;--border:#e0e3e8;--text:#1a1d23;
+      --sub:#5c6270;--accent:#1a6e3a;--accent2:#e8f4ed;--r:10px;
+    }
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+    header{
+      background:var(--white);border-bottom:1px solid var(--border);
+      padding:0 24px;display:flex;align-items:center;
+      justify-content:space-between;height:60px;
+      position:sticky;top:0;z-index:100;
+    }
+    .logo{font-size:1.15rem;font-weight:700;color:var(--accent)}
+    .logo span{color:var(--text);font-weight:400}
+    .badge{font-size:.72rem;background:var(--accent2);color:var(--accent);
+      border:1px solid #b5d9c4;padding:3px 10px;border-radius:20px;font-weight:600}
+
+    .page{display:none}.page.active{display:block}
+
+    /* SCHEDULE */
+    .sw{max-width:860px;margin:0 auto;padding:28px 16px 60px}
+    .sec{font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+      color:var(--sub);margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+    .sec:first-child{margin-top:0}
+    .dl{font-size:.78rem;font-weight:600;color:var(--sub);padding:6px 0 4px}
+    .mc{background:var(--white);border:1px solid var(--border);border-radius:var(--r);
+      padding:14px 18px;margin-bottom:8px;cursor:pointer;display:flex;
+      align-items:center;gap:14px;transition:box-shadow .15s,border-color .15s}
+    .mc:hover{border-color:#a8c8b8;box-shadow:0 3px 10px rgba(26,110,58,.1)}
+    .gtag{font-size:.63rem;font-weight:700;background:var(--accent2);color:var(--accent);
+      border-radius:4px;padding:2px 6px;white-space:nowrap;min-width:44px;text-align:center}
+    .mt{flex:1;font-size:.97rem;font-weight:600}
+    .mt .vs{color:var(--sub);font-weight:400;font-size:.82rem;margin:0 5px}
+    .mm{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+    .mti{font-size:.82rem;font-weight:600;color:var(--accent);white-space:nowrap}
+    .mv{font-size:.7rem;color:var(--sub);white-space:nowrap;max-width:180px;
+      overflow:hidden;text-overflow:ellipsis;text-align:right}
+    .pi{color:#ccd0d8;font-size:1rem;transition:color .15s}
+    .mc:hover .pi{color:var(--accent)}
+
+    /* STREAM PAGE */
+    #sp{display:none;flex-direction:column;height:calc(100vh - 60px)}
+    #sp.active{display:flex}
+    .sl{display:flex;flex:1;overflow:hidden}
+
+    /* PLAYER — left 1/3 */
+    .pp{width:33.333%;min-width:300px;background:#0d0f12;display:flex;
+      flex-direction:column;position:sticky;top:60px;height:calc(100vh - 60px);overflow:hidden}
+    .pt{padding:14px 16px 10px;background:#161a20;border-bottom:1px solid #252930}
+    .bb{background:none;border:none;color:#8a9bb0;font-size:.82rem;cursor:pointer;
+      padding:0;display:flex;align-items:center;gap:5px;margin-bottom:10px;font-family:inherit}
+    .bb:hover{color:#fff}
+    .stitle{font-size:1rem;font-weight:700;color:#fff;line-height:1.3}
+    .ssub{font-size:.72rem;color:#7a8898;margin-top:3px}
+
+    /* VIDEO CONTAINER */
+    .vbox{flex:1;background:#080a0d;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+    #player{width:100%;height:100%;display:block;background:#000}
+    .voverlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;
+      flex-direction:column;align-items:center;justify-content:center;
+      color:#fff;gap:10px;pointer-events:none}
+    .voverlay.hidden{display:none}
+    .voverlay .spin{
+      width:36px;height:36px;border:3px solid #333;
+      border-top-color:var(--accent);border-radius:50%;
+      animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .voverlay .vmsg{font-size:.82rem;color:#8899aa}
+
+    /* SOURCE BUTTONS */
+    .ss{padding:10px 14px;background:#161a20;border-top:1px solid #252930;overflow-y:auto;max-height:38vh}
+    .sl2{font-size:.6rem;letter-spacing:.8px;text-transform:uppercase;color:#556070;margin-bottom:6px}
+    .sg{margin-bottom:8px}
+    .sgl{font-size:.58rem;letter-spacing:.7px;text-transform:uppercase;color:#3d4a58;margin-bottom:4px}
+    .sbr{display:flex;flex-wrap:wrap;gap:5px}
+    .sb{font-size:.71rem;font-weight:600;padding:5px 10px;border-radius:6px;
+      border:1px solid #2e3540;background:#1e232c;color:#8eacc4;
+      cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+    .sb:hover,.sb.active{background:var(--accent);border-color:var(--accent);color:#fff}
+    .sb.err{background:#2a1515;border-color:#4a2020;color:#aa6666}
+
+    .sn{background:#111418;padding:7px 14px;font-size:.66rem;color:#485560;
+      text-align:center;border-top:1px solid #1e2530;line-height:1.6;flex-shrink:0}
+
+    /* SIDEBAR */
+    .sm{flex:1;overflow-y:auto;padding:20px 20px 40px;background:var(--bg)}
+    .stl{font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+      color:var(--sub);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+    .sc{background:var(--white);border:1px solid var(--border);border-radius:var(--r);
+      padding:11px 14px;margin-bottom:7px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+    .sc:hover{border-color:#a8c8b8;box-shadow:0 2px 8px rgba(26,110,58,.08)}
+    .sc.cur{border-color:var(--accent);background:var(--accent2)}
+    .ste{font-size:.88rem;font-weight:600;margin-bottom:3px}
+    .si{font-size:.7rem;color:var(--sub);display:flex;gap:8px;flex-wrap:wrap}
+
+    @media(max-width:680px){
+      .pp{width:100%;min-width:unset;position:relative;height:auto}
+      .vbox{height:56vw}
+      .sl{flex-direction:column}
+      .sm{padding:14px 12px 40px}
+      .mv{display:none}
+      header{padding:0 14px}
+      .sw{padding:16px 10px 40px}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Stream BD <span>– FIFA World Cup 2026</span></div>
+  <div class="badge">🏆 104 Matches</div>
+</header>
+
+<div id="schp" class="page active">
+  <div class="sw" id="sc2"></div>
+</div>
+
+<div id="sp" class="page">
+  <div class="sl">
+    <div class="pp">
+      <div class="pt">
+        <button class="bb" onclick="goBack()">← সকল ম্যাচ</button>
+        <div class="stitle" id="stitle">–</div>
+        <div class="ssub" id="ssub">–</div>
+      </div>
+      <div class="vbox">
+        <video id="player" controls playsinline></video>
+        <div class="voverlay" id="overlay">
+          <div class="spin"></div>
+          <div class="vmsg" id="vmsg">লোড হচ্ছে…</div>
+        </div>
+      </div>
+      <div class="ss">
+        <div class="sl2">🔴 চ্যানেল বেছে নিন</div>
+        <div id="sgc"></div>
+      </div>
+      <div class="sn">
+        কোনো সোর্স কাজ না করলে পরেরটি চেষ্টা করুন।<br>
+        ম্যাচ শুরুর আগে সোর্স অফলাইন থাকতে পারে।
+      </div>
+    </div>
+    <div class="sm">
+      <div class="stl">অন্যান্য ম্যাচ</div>
+      <div id="sbl"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── HLS SOURCES ─────────────────────────────────────────────────────────────
+// All publicly available M3U8/HLS streams — play directly in browser via HLS.js
+const SOURCES = [
+  {
+    group: "🇧🇩 বাংলাদেশ",
+    items: [
+      { label: "BTV",       url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1709/output/index.m3u8" },
+      { label: "T Sports",  url: "https://live.tsports.com/mobile_hls/tsports_live_3/playlist.m3u8" },
+      { label: "Somoy TV",  url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1702/output/index.m3u8" },
+    ]
+  },
+  {
+    group: "🌍 আন্তর্জাতিক (ফ্রি)",
+    items: [
+      { label: "BBC One (UK)",  url: "https://vs-hls-pushb-uk.live.cf.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_one_hd/iptv/hp/live.m3u8" },
+      { label: "ITV (UK)",      url: "https://itvpnpdotcom.cdn.itv.com/iplayer-itvpnp-usp/clear/1/1/client_playlist.m3u8" },
+      { label: "SBS (AU)",      url: "https://sbs-live.akamaized.net/hls/live/2043132/SBSOne/master.m3u8" },
+      { label: "Abema (JP)",    url: "https://ds-linear-abematv.akamaized.net/live/channel_of_the_hour/playlist.m3u8" },
+    ]
+  },
+  {
+    group: "⚽ স্পোর্টস ব্যাকআপ",
+    items: [
+      { label: "T Sports HD",   url: "https://live.tsports.com/mobile_hls/tsports_live_1/playlist.m3u8" },
+      { label: "BTV Backup",    url: "https://www.btvlive.gov.bd/live/37f2df30-3edf-42f3-a2ee-6185002c841c/BD/d96eb7f4-83c2-4472-9597-3568390a8ebf/index.m3u8" },
+      { label: "Sony Sports",   url: "https://d3j7ofexbkp7q4.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-bl5ti7t9yiazp-ssai-prd/master.m3u8" },
+    ]
+  }
+];
+
+// ─── MATCH DATA ───────────────────────────────────────────────────────────────
+const GS = ["A","B","C","D","E","F","G","H","I","J","K","L"];
+const KO = ["R32","R16","QF","SF","3RD","FINAL"];
+const KL = {R32:"ROUND OF 32",R16:"ROUND OF 16",QF:"QUARTERFINALS",SF:"SEMIFINALS","3RD":"THIRD PLACE",FINAL:"🏆 FINAL"};
+
+const M = [
+  {id:1,  d:"Thu, Jun 11",g:"A",   h:"Mexico",        a:"South Africa",        t:"রাত ১টা BST",  v:"Estadio Azteca, Mexico City"},
+  {id:2,  d:"Thu, Jun 11",g:"A",   h:"South Korea",   a:"Czechia",              t:"সকাল ৮টা BST", v:"Estadio Akron, Zapopan"},
+  {id:3,  d:"Fri, Jun 12",g:"B",   h:"Canada",        a:"Bosnia & Herzegovina", t:"রাত ১টা BST",  v:"BMO Field, Toronto"},
+  {id:4,  d:"Fri, Jun 12",g:"D",   h:"USA",           a:"Paraguay",             t:"সকাল ৭টা BST", v:"SoFi Stadium, Inglewood"},
+  {id:5,  d:"Sat, Jun 13",g:"B",   h:"Qatar",         a:"Switzerland",          t:"রাত ১টা BST",  v:"Levi's Stadium, Santa Clara"},
+  {id:6,  d:"Sat, Jun 13",g:"C",   h:"Brazil",        a:"Morocco",              t:"ভোর ৪টা BST",  v:"MetLife Stadium, East Rutherford"},
+  {id:7,  d:"Sat, Jun 13",g:"C",   h:"Haiti",         a:"Scotland",             t:"সকাল ৭টা BST", v:"Gillette Stadium, Foxborough"},
+  {id:8,  d:"Sun, Jun 14",g:"D",   h:"Australia",     a:"Türkiye",              t:"রাত ১০টা BST", v:"BC Place, Vancouver"},
+  {id:9,  d:"Sun, Jun 14",g:"E",   h:"Germany",       a:"Curaçao",              t:"রাত ১১টা BST", v:"NRG Stadium, Houston"},
+  {id:10, d:"Sun, Jun 14",g:"F",   h:"Netherlands",   a:"Japan",                t:"ভোর ২টা BST",  v:"AT&T Stadium, Arlington"},
+  {id:11, d:"Sun, Jun 14",g:"E",   h:"Ivory Coast",   a:"Ecuador",              t:"ভোর ৫টা BST",  v:"Lincoln Financial, Philadelphia"},
+  {id:12, d:"Sun, Jun 14",g:"F",   h:"Sweden",        a:"Tunisia",              t:"সকাল ৮টা BST", v:"Estadio BBVA, Monterrey"},
+  {id:13, d:"Mon, Jun 15",g:"H",   h:"Spain",         a:"Cape Verde",           t:"রাত ১০টা BST", v:"Mercedes-Benz Stadium, Atlanta"},
+  {id:14, d:"Mon, Jun 15",g:"G",   h:"Belgium",       a:"Egypt",                t:"রাত ১টা BST",  v:"Lumen Field, Seattle"},
+  {id:15, d:"Mon, Jun 15",g:"H",   h:"Saudi Arabia",  a:"Uruguay",              t:"ভোর ৪টা BST",  v:"Hard Rock Stadium, Miami"},
+  {id:16, d:"Mon, Jun 15",g:"G",   h:"Iran",          a:"New Zealand",          t:"সকাল ৭টা BST", v:"SoFi Stadium, Inglewood"},
+  {id:17, d:"Tue, Jun 16",g:"I",   h:"France",        a:"Senegal",              t:"রাত ১টা BST",  v:"MetLife Stadium, East Rutherford"},
+  {id:18, d:"Tue, Jun 16",g:"I",   h:"Iraq",          a:"Norway",               t:"ভোর ৪টা BST",  v:"Gillette Stadium, Foxborough"},
+  {id:19, d:"Tue, Jun 16",g:"J",   h:"Argentina",     a:"Algeria",              t:"সকাল ৭টা BST", v:"Arrowhead Stadium, Kansas City"},
+  {id:20, d:"Wed, Jun 17",g:"J",   h:"Austria",       a:"Jordan",               t:"রাত ১০টা BST", v:"Levi's Stadium, Santa Clara"},
+  {id:21, d:"Wed, Jun 17",g:"K",   h:"Portugal",      a:"DR Congo",             t:"রাত ১১টা BST", v:"NRG Stadium, Houston"},
+  {id:22, d:"Wed, Jun 17",g:"L",   h:"England",       a:"Croatia",              t:"ভোর ২টা BST",  v:"AT&T Stadium, Arlington"},
+  {id:23, d:"Wed, Jun 17",g:"L",   h:"Ghana",         a:"Panama",               t:"ভোর ৫টা BST",  v:"BMO Field, Toronto"},
+  {id:24, d:"Wed, Jun 17",g:"K",   h:"Uzbekistan",    a:"Colombia",             t:"সকাল ৮টা BST", v:"Estadio Azteca, Mexico City"},
+  {id:25, d:"Thu, Jun 18",g:"A",   h:"Czechia",       a:"South Africa",         t:"রাত ১০টা BST", v:"Mercedes-Benz Stadium, Atlanta"},
+  {id:26, d:"Thu, Jun 18",g:"B",   h:"Switzerland",   a:"Bosnia & Herzegovina", t:"রাত ১টা BST",  v:"SoFi Stadium, Inglewood"},
+  {id:27, d:"Thu, Jun 18",g:"B",   h:"Canada",        a:"Qatar",                t:"ভোর ৪টা BST",  v:"BC Place, Vancouver"},
+  {id:28, d:"Thu, Jun 18",g:"A",   h:"Mexico",        a:"South Korea",          t:"সকাল ৭টা BST", v:"Estadio Akron, Zapopan"},
+  {id:29, d:"Fri, Jun 19",g:"D",   h:"USA",           a:"Australia",            t:"রাত ১টা BST",  v:"Lumen Field, Seattle"},
+  {id:30, d:"Fri, Jun 19",g:"C",   h:"Scotland",      a:"Morocco",              t:"ভোর ৪টা BST",  v:"Gillette Stadium, Foxborough"},
+  {id:31, d:"Fri, Jun 19",g:"C",   h:"Brazil",        a:"Haiti",                t:"ভোর ৬:৩০ BST", v:"Lincoln Financial, Philadelphia"},
+  {id:32, d:"Fri, Jun 19",g:"D",   h:"Türkiye",       a:"Paraguay",             t:"সকাল ৯টা BST", v:"Levi's Stadium, Santa Clara"},
+  {id:33, d:"Sat, Jun 20",g:"F",   h:"Netherlands",   a:"Sweden",               t:"রাত ১১টা BST", v:"NRG Stadium, Houston"},
+  {id:34, d:"Sat, Jun 20",g:"E",   h:"Germany",       a:"Ivory Coast",          t:"ভোর ২টা BST",  v:"BMO Field, Toronto"},
+  {id:35, d:"Sat, Jun 20",g:"E",   h:"Ecuador",       a:"Curaçao",              t:"ভোর ৬টা BST",  v:"Arrowhead Stadium, Kansas City"},
+  {id:36, d:"Sun, Jun 21",g:"F",   h:"Tunisia",       a:"Japan",                t:"রাত ১০টা BST", v:"Estadio BBVA, Monterrey"},
+  {id:37, d:"Sun, Jun 21",g:"H",   h:"Spain",         a:"Saudi Arabia",         t:"রাত ১০টা BST", v:"Mercedes-Benz Stadium, Atlanta"},
+  {id:38, d:"Sun, Jun 21",g:"G",   h:"Belgium",       a:"Iran",                 t:"রাত ১টা BST",  v:"SoFi Stadium, Inglewood"},
+  {id:39, d:"Sun, Jun 21",g:"H",   h:"Uruguay",       a:"Cape Verde",           t:"ভোর ৪টা BST",  v:"Hard Rock Stadium, Miami"},
+  {id:40, d:"Sun, Jun 21",g:"G",   h:"New Zealand",   a:"Egypt",                t:"সকাল ৭টা BST", v:"BC Place, Vancouver"},
+  {id:41, d:"Mon, Jun 22",g:"J",   h:"Argentina",     a:"Austria",              t:"রাত ১১টা BST", v:"AT&T Stadium, Arlington"},
+  {id:42, d:"Mon, Jun 22",g:"I",   h:"France",        a:"Iraq",                 t:"ভোর ৩টা BST",  v:"Lincoln Financial, Philadelphia"},
+  {id:43, d:"Mon, Jun 22",g:"I",   h:"Norway",        a:"Senegal",              t:"ভোর ৬টা BST",  v:"MetLife Stadium, East Rutherford"},
+  {id:44, d:"Mon, Jun 22",g:"J",   h:"Jordan",        a:"Algeria",              t:"সকাল ৯টা BST", v:"Levi's Stadium, Santa Clara"},
+  {id:45, d:"Tue, Jun 23",g:"K",   h:"Portugal",      a:"Uzbekistan",           t:"রাত ১১টা BST", v:"NRG Stadium, Houston"},
+  {id:46, d:"Tue, Jun 23",g:"L",   h:"England",       a:"Ghana",                t:"ভোর ২টা BST",  v:"Gillette Stadium, Foxborough"},
+  {id:47, d:"Tue, Jun 23",g:"L",   h:"Panama",        a:"Croatia",              t:"ভোর ৫টা BST",  v:"BMO Field, Toronto"},
+  {id:48, d:"Tue, Jun 23",g:"K",   h:"Colombia",      a:"DR Congo",             t:"সকাল ৮টা BST", v:"Estadio Akron, Zapopan"},
+  {id:49, d:"Wed, Jun 24",g:"B",   h:"Switzerland",   a:"Canada",               t:"রাত ১টা BST",  v:"BC Place, Vancouver"},
+  {id:50, d:"Wed, Jun 24",g:"B",   h:"Bosnia & Herz.",a:"Qatar",                t:"রাত ১টা BST",  v:"Lumen Field, Seattle"},
+  {id:51, d:"Wed, Jun 24",g:"C",   h:"Scotland",      a:"Brazil",               t:"ভোর ৪টা BST",  v:"Hard Rock Stadium, Miami"},
+  {id:52, d:"Wed, Jun 24",g:"C",   h:"Morocco",       a:"Haiti",                t:"ভোর ৪টা BST",  v:"Mercedes-Benz Stadium, Atlanta"},
+  {id:53, d:"Wed, Jun 24",g:"A",   h:"Czechia",       a:"Mexico",               t:"সকাল ৭টা BST", v:"Estadio Azteca, Mexico City"},
+  {id:54, d:"Wed, Jun 24",g:"A",   h:"South Africa",  a:"South Korea",          t:"সকাল ৭টা BST", v:"Estadio BBVA, Monterrey"},
+  {id:55, d:"Thu, Jun 25",g:"E",   h:"Curaçao",       a:"Ivory Coast",          t:"ভোর ২টা BST",  v:"Lincoln Financial, Philadelphia"},
+  {id:56, d:"Thu, Jun 25",g:"E",   h:"Ecuador",       a:"Germany",              t:"ভোর ২টা BST",  v:"MetLife Stadium, East Rutherford"},
+  {id:57, d:"Thu, Jun 25",g:"F",   h:"Japan",         a:"Sweden",               t:"ভোর ৫টা BST",  v:"AT&T Stadium, Arlington"},
+  {id:58, d:"Thu, Jun 25",g:"F",   h:"Tunisia",       a:"Netherlands",          t:"ভোর ৫টা BST",  v:"Arrowhead Stadium, Kansas City"},
+  {id:59, d:"Thu, Jun 25",g:"D",   h:"Türkiye",       a:"USA",                  t:"সকাল ৮টা BST", v:"SoFi Stadium, Inglewood"},
+  {id:60, d:"Thu, Jun 25",g:"D",   h:"Paraguay",      a:"Australia",            t:"সকাল ৮টা BST", v:"Levi's Stadium, Santa Clara"},
+  {id:61, d:"Fri, Jun 26",g:"I",   h:"Norway",        a:"France",               t:"রাত ১টা BST",  v:"Gillette Stadium, Foxborough"},
+  {id:62, d:"Fri, Jun 26",g:"I",   h:"Senegal",       a:"Iraq",                 t:"রাত ১টা BST",  v:"BMO Field, Toronto"},
+  {id:63, d:"Fri, Jun 26",g:"H",   h:"Cape Verde",    a:"Saudi Arabia",         t:"ভোর ৬টা BST",  v:"NRG Stadium, Houston"},
+  {id:64, d:"Fri, Jun 26",g:"H",   h:"Uruguay",       a:"Spain",                t:"ভোর ৬টা BST",  v:"Estadio Akron, Zapopan"},
+  {id:65, d:"Fri, Jun 26",g:"G",   h:"Egypt",         a:"Iran",                 t:"সকাল ৯টা BST", v:"Lumen Field, Seattle"},
+  {id:66, d:"Fri, Jun 26",g:"G",   h:"New Zealand",   a:"Belgium",              t:"সকাল ৯টা BST", v:"BC Place, Vancouver"},
+  {id:67, d:"Sat, Jun 27",g:"L",   h:"Panama",        a:"England",              t:"ভোর ৩টা BST",  v:"MetLife Stadium, East Rutherford"},
+  {id:68, d:"Sat, Jun 27",g:"L",   h:"Croatia",       a:"Ghana",                t:"ভোর ৩টা BST",  v:"Lincoln Financial, Philadelphia"},
+  {id:69, d:"Sat, Jun 27",g:"K",   h:"Colombia",      a:"Portugal",             t:"ভোর ৫:৩০ BST", v:"Hard Rock Stadium, Miami"},
+  {id:70, d:"Sat, Jun 27",g:"K",   h:"DR Congo",      a:"Uzbekistan",           t:"ভোর ৫:৩০ BST", v:"Mercedes-Benz Stadium, Atlanta"},
+  {id:71, d:"Sat, Jun 27",g:"J",   h:"Algeria",       a:"Austria",              t:"সকাল ৮টা BST", v:"Arrowhead Stadium, Kansas City"},
+  {id:72, d:"Sat, Jun 27",g:"J",   h:"Jordan",        a:"Argentina",            t:"সকাল ৮টা BST", v:"AT&T Stadium, Arlington"},
+  // ROUND OF 32
+  {id:73, d:"Sun, Jun 28",g:"R32", h:"Runner-up A",   a:"Runner-up B",          t:"রাত ১টা BST",  v:"SoFi Stadium, Inglewood"},
+  {id:74, d:"Mon, Jun 29",g:"R32", h:"Winner E",      a:"Best 3rd A/B/C/D/F",   t:"ভোর ২:৩০ BST", v:"Gillette Stadium, Foxborough"},
+  {id:75, d:"Mon, Jun 29",g:"R32", h:"Winner F",      a:"Runner-up C",          t:"সকাল ৭টা BST", v:"Estadio BBVA, Monterrey"},
+  {id:76, d:"Mon, Jun 29",g:"R32", h:"Winner C",      a:"Runner-up F",          t:"রাত ১১টা BST", v:"NRG Stadium, Houston"},
+  {id:77, d:"Tue, Jun 30",g:"R32", h:"Winner I",      a:"Best 3rd C/D/F/G/H",   t:"ভোর ৩টা BST",  v:"MetLife Stadium, East Rutherford"},
+  {id:78, d:"Tue, Jun 30",g:"R32", h:"Runner-up E",   a:"Runner-up I",          t:"রাত ১১টা BST", v:"AT&T Stadium, Arlington"},
+  {id:79, d:"Tue, Jun 30",g:"R32", h:"Winner A",      a:"Best 3rd C/E/F/H/I",   t:"সকাল ৭টা BST", v:"Estadio Azteca, Mexico City"},
+  {id:80, d:"Wed, Jul 1", g:"R32", h:"Winner L",      a:"Best 3rd E/H/I/J/K",   t:"রাত ১০টা BST", v:"Mercedes-Benz Stadium, Atlanta"},
+  {id:81, d:"Wed, Jul 1", g:"R32", h:"Winner D",      a:"Best 3rd B/E/F/I/J",   t:"ভোর ৬টা BST",  v:"Levi's Stadium, Santa Clara"},
+  {id:82, d:"Wed, Jul 1", g:"R32", h:"Winner G",      a:"Best 3rd A/E/H/I/J",   t:"ভোর ২টা BST",  v:"Lumen Field, Seattle"},
+  {id:83, d:"Thu, Jul 2", g:"R32", h:"Runner-up K",   a:"Runner-up L",          t:"ভোর ৫টা BST",  v:"BMO Field, Toronto"},
+  {id:84, d:"Thu, Jul 2", g:"R32", h:"Winner H",      a:"Runner-up J",          t:"রাত ১টা BST",  v:"SoFi Stadium, Inglewood"},
+  {id:85, d:"Thu, Jul 2", g:"R32", h:"Winner B",      a:"Best 3rd E/F/G/I/J",   t:"সকাল ৯টা BST", v:"BC Place, Vancouver"},
+  {id:86, d:"Fri, Jul 3", g:"R32", h:"Winner J",      a:"Runner-up H",          t:"ভোর ৪টা BST",  v:"Hard Rock Stadium, Miami"},
+  {id:87, d:"Fri, Jul 3", g:"R32", h:"Winner K",      a:"Best 3rd D/E/I/J/L",   t:"সকাল ৭:৩০ BST",v:"Arrowhead Stadium, Kansas City"},
+  {id:88, d:"Fri, Jul 3", g:"R32", h:"Runner-up D",   a:"Runner-up G",          t:"রাত ১২টা BST", v:"AT&T Stadium, Arlington"},
+  // R16
+  {id:89, d:"Sat, Jul 4", g:"R16", h:"W M74",         a:"W M77",                t:"ভোর ৩টা BST",  v:"Lincoln Financial, Philadelphia"},
+  {id:90, d:"Sat, Jul 4", g:"R16", h:"W M73",         a:"W M75",                t:"রাত ১১টা BST", v:"NRG Stadium, Houston"},
+  {id:91, d:"Sun, Jul 5", g:"R16", h:"W M76",         a:"W M78",                t:"TBD",           v:"TBD"},
+  {id:92, d:"Sun, Jul 5", g:"R16", h:"W M79",         a:"W M80",                t:"TBD",           v:"TBD"},
+  {id:93, d:"Mon, Jul 6", g:"R16", h:"W M81",         a:"W M82",                t:"TBD",           v:"TBD"},
+  {id:94, d:"Mon, Jul 6", g:"R16", h:"W M83",         a:"W M84",                t:"TBD",           v:"TBD"},
+  {id:95, d:"Tue, Jul 7", g:"R16", h:"W M85",         a:"W M86",                t:"TBD",           v:"TBD"},
+  {id:96, d:"Tue, Jul 7", g:"R16", h:"W M87",         a:"W M88",                t:"TBD",           v:"TBD"},
+  // QF
+  {id:97, d:"Wed, Jul 9", g:"QF",  h:"W M89",         a:"W M90",                t:"TBD",           v:"TBD"},
+  {id:98, d:"Thu, Jul 10",g:"QF",  h:"W M91",         a:"W M92",                t:"TBD",           v:"TBD"},
+  {id:99, d:"Thu, Jul 10",g:"QF",  h:"W M93",         a:"W M94",                t:"TBD",           v:"TBD"},
+  {id:100,d:"Fri, Jul 11",g:"QF",  h:"W M95",         a:"W M96",                t:"TBD",           v:"TBD"},
+  // SF
+  {id:101,d:"Mon, Jul 14",g:"SF",  h:"W QF1",         a:"W QF2",                t:"TBD",           v:"AT&T Stadium, Arlington"},
+  {id:102,d:"Tue, Jul 15",g:"SF",  h:"W QF3",         a:"W QF4",                t:"TBD",           v:"MetLife Stadium, East Rutherford"},
+  // 3rd
+  {id:103,d:"Sat, Jul 18",g:"3RD", h:"SF Loser 1",    a:"SF Loser 2",           t:"রাত ১১টা BST", v:"Levi's Stadium, Santa Clara"},
+  // Final
+  {id:104,d:"Sun, Jul 19",g:"FINAL",h:"SF Winner 1",  a:"SF Winner 2",          t:"রাত ১১টা BST", v:"MetLife Stadium, East Rutherford"},
+];
+
+// ─── HLS PLAYER ──────────────────────────────────────────────────────────────
+let hls = null;
+let activeBtn = null;
+
+function loadStream(url, btn) {
+  const video = document.getElementById("player");
+  const overlay = document.getElementById("overlay");
+  const vmsg = document.getElementById("vmsg");
+
+  // Mark button active
+  document.querySelectorAll(".sb").forEach(b => b.classList.remove("active"));
+  if (btn) { btn.classList.add("active"); activeBtn = btn; }
+
+  overlay.classList.remove("hidden");
+  vmsg.textContent = "লোড হচ্ছে…";
+
+  // Destroy previous HLS instance
+  if (hls) { hls.destroy(); hls = null; }
+
+  if (Hls.isSupported()) {
+    hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      overlay.classList.add("hidden");
+      video.play().catch(() => {});
+    });
+    hls.on(Hls.Events.ERROR, (e, data) => {
+      if (data.fatal) {
+        vmsg.textContent = "সোর্স লোড হয়নি। অন্যটি চেষ্টা করুন।";
+        overlay.classList.remove("hidden");
+        if (btn) btn.classList.add("err");
+      }
+    });
+  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    // Safari native HLS
+    video.src = url;
+    video.addEventListener("loadedmetadata", () => {
+      overlay.classList.add("hidden");
+      video.play().catch(() => {});
+    });
+    video.addEventListener("error", () => {
+      vmsg.textContent = "সোর্স লোড হয়নি। অন্যটি চেষ্টা করুন।";
+    });
+  } else {
+    vmsg.textContent = "আপনার ব্রাউজার HLS সাপোর্ট করে না।";
+  }
+}
+
+// ─── BUILD SCHEDULE ───────────────────────────────────────────────────────────
+function gLabel(g) {
+  return GS.includes(g) ? "Group "+g : (KL[g]||g);
+}
+
+function buildSchedule() {
+  const c = document.getElementById("sc2");
+  c.innerHTML = "";
+
+  function addSec(text) {
+    const d = document.createElement("div");
+    d.className = "sec"; d.textContent = text; c.appendChild(d);
+  }
+  function addDL(text) {
+    const d = document.createElement("div");
+    d.className = "dl"; d.textContent = text; c.appendChild(d);
+  }
+  function addCard(m) {
+    const d = document.createElement("div");
+    d.className = "mc";
+    d.onclick = () => openMatch(m.id);
+    d.innerHTML = `<div class="gtag">${gLabel(m.g)}</div>
+      <div class="mt">${m.h}<span class="vs"> vs </span>${m.a}</div>
+      <div class="mm"><div class="mti">${m.t}</div><div class="mv">${m.v}</div></div>
+      <div class="pi">▶</div>`;
+    c.appendChild(d);
+  }
+
+  addSec("GROUP STAGE — ১১ জুন – ২৭ জুন");
+  const bd = {};
+  M.filter(m=>GS.includes(m.g)).forEach(m=>(bd[m.d]=bd[m.d]||[]).push(m));
+  Object.entries(bd).forEach(([d,ms])=>{ addDL(d); ms.forEach(addCard); });
+
+  KO.forEach(stage=>{
+    const ms = M.filter(m=>m.g===stage);
+    if(!ms.length) return;
+    addSec(KL[stage]||stage);
+    const bd2={};
+    ms.forEach(m=>(bd2[m.d]=bd2[m.d]||[]).push(m));
+    Object.entries(bd2).forEach(([d,ms2])=>{ addDL(d); ms2.forEach(addCard); });
+  });
+}
+
+// ─── OPEN MATCH ───────────────────────────────────────────────────────────────
+function openMatch(id) {
+  const m = M.find(x=>x.id===id);
+  if(!m) return;
+
+  document.getElementById("stitle").textContent = m.h+" vs "+m.a;
+  document.getElementById("ssub").textContent = m.d+" · "+m.t+" · "+m.v;
+
+  buildSourceBtns();
+  buildSidebar(id);
+
+  // Auto-load first source
+  const first = SOURCES[0].items[0];
+  const firstBtn = document.querySelector(".sb");
+  loadStream(first.url, firstBtn);
+
+  document.getElementById("schp").classList.remove("active");
+  document.getElementById("schp").style.display = "none";
+  const sp = document.getElementById("sp");
+  sp.style.display = "flex";
+  sp.classList.add("active");
+  window.scrollTo(0,0);
+}
+
+function buildSourceBtns() {
+  const c = document.getElementById("sgc");
+  c.innerHTML = "";
+  SOURCES.forEach(grp => {
+    const gd = document.createElement("div"); gd.className = "sg";
+    const gl = document.createElement("div"); gl.className = "sgl"; gl.textContent = grp.group;
+    gd.appendChild(gl);
+    const row = document.createElement("div"); row.className = "sbr";
+    grp.items.forEach(src => {
+      const b = document.createElement("button");
+      b.className = "sb";
+      b.textContent = src.label;
+      b.onclick = () => { b.classList.remove("err"); loadStream(src.url, b); };
+      row.appendChild(b);
+    });
+    gd.appendChild(row);
+    c.appendChild(gd);
+  });
+}
+
+function buildSidebar(curId) {
+  const list = document.getElementById("sbl");
+  list.innerHTML = "";
+  M.forEach(m=>{
+    const d = document.createElement("div");
+    d.className = "sc"+(m.id===curId?" cur":"");
+    d.onclick = () => {
+      document.querySelectorAll(".sc").forEach(c=>c.classList.remove("cur"));
+      d.classList.add("cur");
+      document.getElementById("stitle").textContent = m.h+" vs "+m.a;
+      document.getElementById("ssub").textContent = m.d+" · "+m.t+" · "+m.v;
+    };
+    d.innerHTML = `<div class="ste">${m.h} vs ${m.a}</div>
+      <div class="si"><span>${gLabel(m.g)}</span><span>${m.d}</span><span>${m.t}</span></div>`;
+    list.appendChild(d);
+  });
+  setTimeout(()=>{
+    const cur = list.querySelector(".cur");
+    if(cur) cur.scrollIntoView({block:"center",behavior:"smooth"});
+  },100);
+}
+
+function goBack() {
+  const video = document.getElementById("player");
+  video.pause();
+  if(hls){hls.destroy();hls=null;}
+  video.src="";
+  document.getElementById("sp").style.display="none";
+  document.getElementById("sp").classList.remove("active");
+  document.getElementById("schp").style.display="";
+  document.getElementById("schp").classList.add("active");
+}
+
+buildSchedule();
+</script>
+</body>
+</html>
